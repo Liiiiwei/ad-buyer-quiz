@@ -198,8 +198,8 @@
         background: var(--card);
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        padding: 16px 14px;
-        margin-bottom: 12px;
+        padding: 13px;
+        margin-bottom: 10px;
       }
 
       .panel.bare {
@@ -436,8 +436,18 @@
         background-color: var(--navy);
         color: #fff;
         border-radius: 12px;
-        padding: 20px 18px;
+        padding: 16px;
+        margin-bottom: 10px;
+      }
+      /* 角色圖和名字併排，比上下堆疊省掉約 90px 高度 */
+      .result-head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
         margin-bottom: 12px;
+      }
+      .result-id {
+        min-width: 0;
       }
       /* ===== 動畫 ===== */
       /* 換頁時內容由下往上淡入，最多錯開 6 個區塊，之後統一 */
@@ -496,7 +506,10 @@
       @keyframes revealCard {
         from {
           opacity: 0;
-          transform: translateY(14px) scale(0.97);
+          transform: translateY(26px) scale(0.9);
+        }
+        60% {
+          opacity: 1;
         }
         to {
           opacity: 1;
@@ -504,25 +517,45 @@
         }
       }
       .wrap.enter > .result-card {
-        animation: revealCard 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        animation: revealCard 0.62s cubic-bezier(0.22, 1.2, 0.36, 1) 0.06s both;
+      }
+      /* 角色圖在卡片落定後才彈進來，讓人的視線最後停在角色上 */
+      @keyframes avatarIn {
+        from {
+          opacity: 0;
+          transform: scale(0.55) rotate(-8deg);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .wrap.enter .result-card .avatar {
+        animation: avatarIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
       }
       /* 選項的選取回饋（技能標籤不做，否則每點一個全部一起跳） */
       @keyframes pop {
-        50% {
-          transform: scale(1.02);
+        40% {
+          transform: scale(1.045);
+        }
+        100% {
+          transform: none;
         }
       }
-      .opt.sel {
-        animation: pop 0.22s ease-out;
+      /* 選擇器要壓過上面的 .wrap.enter .opt，否則進場動畫會蓋掉這段回饋 */
+      .wrap .opts .opt.sel {
+        animation: pop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       /* 答完到換頁之間的空檔：選中的留著，其餘退下去，讓人看見自己選了什麼 */
       .opts.locked .opt:not(.sel) {
-        opacity: 0.35;
-        transform: none;
+        opacity: 0.28;
+        transform: scale(0.98);
       }
       .opts.locked .opt {
         pointer-events: none;
-        transition: opacity 0.18s ease;
+        transition:
+          opacity 0.18s ease,
+          transform 0.18s ease;
       }
       /* 觸控裝置沒有真正的 hover，殘留的 hover 態會黏在剛點過的元素上 */
       @media (hover: none) {
@@ -551,7 +584,8 @@
         .wrap.enter > *,
         .wrap.enter .opt,
         .wrap.enter > .result-card,
-        .opt.sel,
+        .wrap.enter .result-card .avatar,
+        .wrap .opts .opt.sel,
         .chip.sel {
           animation: none;
         }
@@ -573,10 +607,11 @@
 
       /* 角色形象：正方形，圖未填時顯示虛線佔位框 */
       .avatar {
-        width: 120px;
-        height: 120px;
-        margin: 0 0 12px;
-        border-radius: 16px;
+        flex: 0 0 88px;
+        width: 88px;
+        height: 88px;
+        margin: 0;
+        border-radius: 14px;
         overflow: hidden;
         background: rgba(255, 255, 255, 0.08);
       }
@@ -599,15 +634,16 @@
         letter-spacing: 0.05em;
       }
       .result-card .type-name {
-        font-size: 26px;
+        font-size: 23px;
         font-weight: 800;
-        line-height: 1.25;
-        margin-bottom: 6px;
+        line-height: 1.2;
+        margin-bottom: 4px;
       }
       .result-card .tagline {
-        font-size: 15px;
+        font-size: 14px;
+        line-height: 1.45;
         color: #dbe6f0;
-        margin-bottom: 12px;
+        margin-bottom: 0;
       }
       .badges {
         display: flex;
@@ -637,10 +673,10 @@
         font-weight: 700;
         color: var(--accent-text);
         letter-spacing: 0.05em;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .axis {
-        margin-bottom: 15px;
+        margin-bottom: 11px;
       }
       .axis:last-child {
         margin-bottom: 0;
@@ -650,7 +686,7 @@
         justify-content: space-between;
         align-items: baseline;
         font-size: 15px;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
       }
       .axis-head .pole {
         font-weight: 600;
@@ -687,7 +723,7 @@
 
       .profile p {
         font-size: 15px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
       .kv {
         display: flex;
@@ -1309,10 +1345,16 @@
       }
 
       // 每次換頁讓內容依序淡入；移除再加回 class 才能重播動畫
+      var enterTimer = null;
       function playEnter() {
         app.classList.remove("enter");
         void app.offsetWidth;
         app.classList.add("enter");
+        // 動畫跑完就卸掉，留著的 fill:both 會蓋住之後的 hover 與選取回饋
+        clearTimeout(enterTimer);
+        enterTimer = setTimeout(function () {
+          app.classList.remove("enter");
+        }, 1000);
       }
 
       function renderWelcome() {
@@ -1510,13 +1552,17 @@
 
         app.innerHTML =
           '<div class="result-card">' +
+          '<div class="result-head">' +
           artHtml +
+          '<div class="result-id">' +
           '<div class="type-name">' +
           esc(type.name) +
           "</div>" +
           '<p class="tagline">' +
           esc(type.tag) +
           "</p>" +
+          "</div>" +
+          "</div>" +
           '<div class="badges">' +
           '<span class="badge">' +
           esc(rank) +
@@ -1600,6 +1646,9 @@
       function markPicked(i, next) {
         if (advancing) return;
         advancing = true;
+        // 進場動畫用 fill:both，殘留著會把 opacity 與 transform 釘死，
+        // 底下的 pop 和淡出全部吃不到。先卸掉 enter 才看得見選取回饋。
+        app.classList.remove("enter");
         var btns = app.querySelectorAll(".opt");
         for (var n = 0; n < btns.length; n++) {
           btns[n].classList.toggle("sel", n === i);
@@ -1612,7 +1661,7 @@
             advancing = false;
             next();
           },
-          reducedMQ && reducedMQ.matches ? 0 : 200,
+          reducedMQ && reducedMQ.matches ? 0 : 420,
         );
       }
 
