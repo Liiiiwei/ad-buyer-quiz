@@ -675,33 +675,33 @@
         letter-spacing: 0.05em;
         margin-bottom: 6px;
       }
+      /* 名稱、長條、百分比併成一列，比上下三層省掉每軸約 18px */
       .axis {
-        margin-bottom: 11px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        column-gap: 10px;
+        margin-bottom: 9px;
       }
       .axis:last-child {
         margin-bottom: 0;
       }
-      .axis-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        font-size: 15px;
-        margin-bottom: 5px;
-      }
-      .axis-head .pole {
+      .axis .pole {
+        font-size: 14px;
         font-weight: 600;
       }
-      .axis-head .pct {
+      .axis .pct {
         font-family: var(--mono);
         font-weight: 700;
         color: var(--muted);
-        font-size: 13px;
+        font-size: 12px;
+        white-space: nowrap;
       }
-      .axis-head .sway-tag {
+      .axis .sway-tag {
         color: var(--accent-text);
       }
       .axis-track {
-        height: 8px;
+        height: 6px;
         background: rgba(0, 0, 0, 0.08);
         border-radius: 99px;
         overflow: hidden;
@@ -716,14 +716,19 @@
         background: var(--accent);
       }
       .axis-note {
-        font-size: 14px;
+        grid-column: 1 / -1;
+        font-size: 13px;
         color: var(--muted);
-        margin-top: 5px;
+        margin-top: 3px;
       }
 
       .profile p {
         font-size: 15px;
-        margin-bottom: 8px;
+        line-height: 1.55;
+        margin-bottom: 6px;
+      }
+      .profile p:last-child {
+        margin-bottom: 0;
       }
       .kv {
         display: flex;
@@ -1496,17 +1501,17 @@
               '<div class="axis' +
               (a.sway ? " sway" : "") +
               '">' +
-              '<div class="axis-head"><span class="pole">' +
+              '<span class="pole">' +
               esc(a.winName) +
               "</span>" +
-              '<span class="pct">' +
-              a.pct +
-              "%" +
-              (a.sway ? '　<span class="sway-tag">五五波</span>' : "") +
-              "</span></div>" +
               '<div class="axis-track"><div class="axis-fill" data-pct="' +
               a.pct +
               '" style="width:0%"></div></div>' +
+              '<span class="pct">' +
+              a.pct +
+              "%" +
+              (a.sway ? '<br><span class="sway-tag">五五波</span>' : "") +
+              "</span>" +
               (a.sway
                 ? '<p class="axis-note">' + esc(a.swayNote) + "</p>"
                 : "") +
