@@ -113,13 +113,66 @@
         background: var(--bg);
         padding: 12px 0 10px;
       }
+      /* 捲動時選項會從吸頂列底下穿過去，補一段漸層把交界收掉 */
+      .topbar::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        height: 12px;
+        background: linear-gradient(var(--bg), rgba(255, 255, 255, 0));
+        pointer-events: none;
+      }
       .progress-meta {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
+        gap: 10px;
         font-size: 13px;
         color: var(--muted);
         margin-bottom: 6px;
+      }
+      /* 上一題移到進度列，手機上不必捲到底才找得到 */
+      .back-inline {
+        font-size: 13px;
+        color: var(--muted);
+        padding: 2px 0;
+        white-space: nowrap;
+      }
+      .back-inline:hover {
+        color: var(--primary);
+      }
+      .progress-meta .spacer {
+        flex: 1;
+      }
+      /* 三段關卡指示：讓人知道還有幾關，而不只是一條長條 */
+      .stage-dots {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .stage-dot {
+        flex: 1;
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.05em;
+        text-align: center;
+        color: var(--muted);
+        padding: 3px 0;
+        border-radius: 99px;
+        background: var(--card);
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      .stage-dot.done {
+        color: var(--primary);
+      }
+      .stage-dot.now {
+        background: var(--primary);
+        color: #fff;
+        font-weight: 700;
       }
       .progress-meta strong {
         font-family: var(--mono);
@@ -423,6 +476,36 @@
       .wrap.enter > .topbar {
         animation: none;
       }
+      /* 選項逐一落下，比整組一起淡入更有翻牌感 */
+      .wrap.enter .opt {
+        animation: stepIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .wrap.enter .opt:nth-child(1) {
+        animation-delay: 0.08s;
+      }
+      .wrap.enter .opt:nth-child(2) {
+        animation-delay: 0.13s;
+      }
+      .wrap.enter .opt:nth-child(3) {
+        animation-delay: 0.18s;
+      }
+      .wrap.enter .opt:nth-child(4) {
+        animation-delay: 0.23s;
+      }
+      /* 結果卡是整個測驗的 payoff，進場給它比別人重一點的份量 */
+      @keyframes revealCard {
+        from {
+          opacity: 0;
+          transform: translateY(14px) scale(0.97);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .wrap.enter > .result-card {
+        animation: revealCard 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
       /* 選項的選取回饋（技能標籤不做，否則每點一個全部一起跳） */
       @keyframes pop {
         50% {
@@ -432,18 +515,50 @@
       .opt.sel {
         animation: pop 0.22s ease-out;
       }
+      /* 答完到換頁之間的空檔：選中的留著，其餘退下去，讓人看見自己選了什麼 */
+      .opts.locked .opt:not(.sel) {
+        opacity: 0.35;
+        transform: none;
+      }
+      .opts.locked .opt {
+        pointer-events: none;
+        transition: opacity 0.18s ease;
+      }
+      /* 觸控裝置沒有真正的 hover，殘留的 hover 態會黏在剛點過的元素上 */
+      @media (hover: none) {
+        .opt:not(.sel):hover,
+        .chip:not(.sel):hover {
+          transform: none;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+        .opt.sel:hover,
+        .chip.sel:hover {
+          transform: none;
+        }
+        .btn:not([disabled]):hover {
+          background: var(--primary);
+          transform: none;
+        }
+        .btn-ghost:hover {
+          background: none;
+        }
+      }
       /* 三軸長條：由 0 長到目標寬度 */
       .axis-fill {
         transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
       }
       @media (prefers-reduced-motion: reduce) {
         .wrap.enter > *,
+        .wrap.enter .opt,
+        .wrap.enter > .result-card,
         .opt.sel,
         .chip.sel {
           animation: none;
         }
         .axis-fill,
         .progress-fill,
+        .opts.locked .opt,
+        .stage-dot,
         .opt,
         .chip,
         .btn {
@@ -841,7 +956,7 @@
         {
           q: "素材疲勞和受眾疲勞，實務上怎麼區分？",
           o: [
-            { t: "換素材後回升是素材疲勞，換受眾才回升是受眾疲勞", p: 2 },
+            { t: "換素材會回升是素材，換受眾才回升是受眾", p: 2 },
             { t: "看 CTR 掉多少，掉越兇越偏素材的問題", p: 1 },
             { t: "頻率超過 3 是素材疲勞，沒超過是受眾疲勞", p: 0 },
             { t: "兩者其實是同一件事，處理方式也一樣", p: 0 },
@@ -1113,20 +1228,41 @@
         });
       }
 
-      function progressBar(current) {
+      var STAGE_SEQ = [
+        { key: "style", label: "風格" },
+        { key: "power", label: "實力" },
+        { key: "skills", label: "技能" },
+      ];
+
+      // current = 全測驗第幾題；stage = 目前關卡；canBack 決定要不要出「上一題」
+      function progressBar(current, stage, canBack) {
         var pct = Math.round((current / TOTAL_Q) * 100);
+        var at = STAGE_SEQ.findIndex(function (s) {
+          return s.key === stage;
+        });
+        var dots = STAGE_SEQ.map(function (s, i) {
+          var cls = i === at ? " now" : i < at ? " done" : "";
+          return '<span class="stage-dot' + cls + '">' + s.label + "</span>";
+        }).join("");
         return (
           '<div class="topbar">' +
-          '<div class="progress-meta"><span>第 <strong>' +
+          '<div class="progress-meta">' +
+          (canBack
+            ? '<button class="back-inline" data-act="back">← 上一題</button>'
+            : "") +
+          '<span class="spacer"></span>' +
+          "<span>第 <strong>" +
           current +
           "</strong> ／ " +
           TOTAL_Q +
-          " 題</span><span>" +
-          pct +
-          "%</span></div>" +
+          " 題</span>" +
+          "</div>" +
           '<div class="progress-track"><div class="progress-fill" style="width:' +
           pct +
           '%"></div></div>' +
+          '<div class="stage-dots">' +
+          dots +
+          "</div>" +
           "</div>"
         );
       }
@@ -1159,10 +1295,6 @@
         );
       }
 
-      function backBtn() {
-        return '<div class="nav"><button class="btn-ghost" data-act="back">← 上一題</button></div>';
-      }
-
       // quiet = true：原地更新（例如勾技能），不捲回頂端也不重播進場動畫
       function render(quiet) {
         // 原地更新要先卸掉 enter，否則重建出來的節點會自己再淡入一次
@@ -1188,7 +1320,7 @@
           '<div class="panel" style="margin-top:20px">' +
           '<span class="hero-tag">Meta 廣告投放實戰課</span>' +
           "<h1>廣告投手屬性鑑定</h1>" +
-          '<p class="lede">22 題，約 6 分鐘。測出你的投手類型、目前段位，以及最合拍的夥伴。</p>' +
+          '<p class="lede">20 題，約 5 分鐘。測出你的投手類型、目前段位，以及最合拍的夥伴。</p>' +
           '<ol class="step-list">' +
           '<li><span class="step-num">1</span><span><strong>風格題 12 題</strong>：沒有對錯，選最像你的</span></li>' +
           '<li><span class="step-num">2</span><span><strong>實力題 6 題</strong>：課程觀念複習，定出段位</span></li>' +
@@ -1203,7 +1335,7 @@
         var i = state.idx,
           item = STYLE_Q[i];
         app.innerHTML =
-          progressBar(i + 1) +
+          progressBar(i + 1, "style", i > 0) +
           '<div class="panel bare">' +
           '<div class="q-kicker">風格題 ' +
           (i + 1) +
@@ -1214,15 +1346,14 @@
           esc(item.q) +
           "</h2>" +
           optionList(item.o, state.styleAns[i]) +
-          "</div>" +
-          (i > 0 ? backBtn() : "");
+          "</div>";
       }
 
       function renderPower() {
         var i = state.idx,
           item = POWER_Q[i];
         app.innerHTML =
-          progressBar(STYLE_Q.length + i + 1) +
+          progressBar(STYLE_Q.length + i + 1, "power", true) +
           '<div class="panel bare">' +
           '<div class="q-kicker">實力題 ' +
           (i + 1) +
@@ -1233,8 +1364,7 @@
           esc(item.q) +
           "</h2>" +
           optionList(item.o, state.powerAns[i]) +
-          "</div>" +
-          backBtn();
+          "</div>";
       }
 
       function renderSkills() {
@@ -1257,7 +1387,7 @@
             );
           }).join("");
           app.innerHTML =
-            progressBar(current) +
+            progressBar(current, "skills", true) +
             '<div class="panel bare">' +
             '<div class="q-kicker">技能盤點 1 ／ 2</div>' +
             '<h2 class="q-title">你除了投廣告，還會什麼？</h2>' +
@@ -1269,8 +1399,7 @@
             '"></div>' +
             '<p class="hint">可複選，也可以都不選。</p>' +
             "</div>" +
-            '<button class="btn" data-act="skillsNext">下一題</button>' +
-            backBtn();
+            '<button class="btn" data-act="skillsNext">下一題</button>';
         } else {
           var opts = SKILLS.map(function (s) {
             var on = state.wantSkill === s;
@@ -1287,7 +1416,7 @@
             );
           }).join("");
           app.innerHTML =
-            progressBar(current) +
+            progressBar(current, "skills", true) +
             '<div class="panel bare">' +
             '<div class="q-kicker">技能盤點 2 ／ 2</div>' +
             '<h2 class="q-title">你最想找到會什麼的夥伴？</h2>' +
@@ -1298,8 +1427,7 @@
             "</div>" +
             '<button class="btn"' +
             (state.wantSkill ? "" : " disabled") +
-            ' data-act="finish">看我的結果</button>' +
-            backBtn();
+            ' data-act="finish">看我的結果</button>';
         }
       }
 
@@ -1462,28 +1590,58 @@
    互動
    ========================================================= */
 
-      function pickStyle(i) {
-        state.styleAns[state.idx] = i;
-        if (state.idx < STYLE_Q.length - 1) {
-          state.idx++;
-        } else {
-          state.stage = "power";
-          state.idx = 0;
+      // 選完立刻換頁的話，選取回饋根本來不及被看到。先把選中的標起來、
+      // 其餘淡掉，停一下再換頁；停頓期間上鎖，避免連點跳過題目。
+      var advancing = false;
+      var reducedMQ = window.matchMedia
+        ? window.matchMedia("(prefers-reduced-motion: reduce)")
+        : null;
+
+      function markPicked(i, next) {
+        if (advancing) return;
+        advancing = true;
+        var btns = app.querySelectorAll(".opt");
+        for (var n = 0; n < btns.length; n++) {
+          btns[n].classList.toggle("sel", n === i);
+          btns[n].setAttribute("aria-checked", n === i);
         }
-        save();
-        render();
+        var box = app.querySelector(".opts");
+        if (box) box.classList.add("locked");
+        setTimeout(
+          function () {
+            advancing = false;
+            next();
+          },
+          reducedMQ && reducedMQ.matches ? 0 : 200,
+        );
+      }
+
+      function pickStyle(i) {
+        markPicked(i, function () {
+          state.styleAns[state.idx] = i;
+          if (state.idx < STYLE_Q.length - 1) {
+            state.idx++;
+          } else {
+            state.stage = "power";
+            state.idx = 0;
+          }
+          save();
+          render();
+        });
       }
 
       function pickPower(i) {
-        state.powerAns[state.idx] = i;
-        if (state.idx < POWER_Q.length - 1) {
-          state.idx++;
-        } else {
-          state.stage = "skills";
-          state.idx = 0;
-        }
-        save();
-        render();
+        markPicked(i, function () {
+          state.powerAns[state.idx] = i;
+          if (state.idx < POWER_Q.length - 1) {
+            state.idx++;
+          } else {
+            state.stage = "skills";
+            state.idx = 0;
+          }
+          save();
+          render();
+        });
       }
 
       function goBack() {
