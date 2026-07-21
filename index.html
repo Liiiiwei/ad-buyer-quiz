@@ -145,8 +145,8 @@
         background: var(--card);
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        padding: 20px 16px;
-        margin-bottom: 16px;
+        padding: 16px 14px;
+        margin-bottom: 12px;
       }
 
       .panel.bare {
@@ -383,8 +383,8 @@
         background-color: var(--navy);
         color: #fff;
         border-radius: 12px;
-        padding: 24px 20px;
-        margin-bottom: 16px;
+        padding: 20px 18px;
+        margin-bottom: 12px;
       }
       /* ===== 動畫 ===== */
       /* 換頁時內容由下往上淡入，最多錯開 6 個區塊，之後統一 */
@@ -458,9 +458,9 @@
 
       /* 角色形象：正方形，圖未填時顯示虛線佔位框 */
       .avatar {
-        width: 148px;
-        height: 148px;
-        margin: 0 0 16px;
+        width: 120px;
+        height: 120px;
+        margin: 0 0 12px;
         border-radius: 16px;
         overflow: hidden;
         background: rgba(255, 255, 255, 0.08);
@@ -484,15 +484,15 @@
         letter-spacing: 0.05em;
       }
       .result-card .type-name {
-        font-size: 30px;
+        font-size: 26px;
         font-weight: 800;
         line-height: 1.25;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .result-card .tagline {
-        font-size: 16px;
+        font-size: 15px;
         color: #dbe6f0;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
       }
       .badges {
         display: flex;
@@ -522,7 +522,7 @@
         font-weight: 700;
         color: var(--accent-text);
         letter-spacing: 0.05em;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
       .axis {
         margin-bottom: 15px;
@@ -572,13 +572,13 @@
 
       .profile p {
         font-size: 15px;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
       }
       .kv {
         display: flex;
         gap: 10px;
         font-size: 15px;
-        padding: 8px 0;
+        padding: 7px 0;
         border-top: 1px solid var(--line);
       }
       .kv:first-of-type {
@@ -597,9 +597,45 @@
         background: rgba(217, 119, 6, 0.1);
         border: 2px solid var(--accent);
         border-radius: 12px;
-        padding: 14px 16px;
+        padding: 12px 14px;
         font-size: 16px;
         font-weight: 600;
+      }
+      /* 合拍類型：小張角色圖 + 文字並排，圖未填時同樣出虛線佔位框 */
+      .match-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .avatar-sm {
+        flex: 0 0 72px;
+        width: 72px;
+        height: 72px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--card-sel);
+      }
+      .avatar-sm img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .avatar-sm.empty {
+        border: 2px dashed var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 0.55rem;
+        line-height: 1.5;
+        color: var(--muted);
+        letter-spacing: 0.05em;
+      }
+      .match-body {
+        flex: 1;
+        min-width: 0;
       }
       .match-name {
         font-size: 19px;
@@ -609,6 +645,12 @@
       .match-line {
         font-size: 14px;
         color: var(--muted);
+      }
+      /* 同一張卡裡分隔兩個小節，省掉一整個 panel 的外距 */
+      .panel-split {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
       }
       .foot {
         margin-top: 20px;
@@ -1328,6 +1370,16 @@
             ' 角色形象"></div>'
           : '<div class="avatar empty" aria-hidden="true">角色形象<br>待補</div>';
 
+        // 合拍類型的角色圖：沿用該型自己的 art，未填時出小張佔位框
+        var match = TYPES[type.match];
+        var matchArtHtml = match.art
+          ? '<div class="avatar-sm"><img src="' +
+            match.art +
+            '" alt="' +
+            esc(match.name) +
+            ' 角色形象"></div>'
+          : '<div class="avatar-sm empty" aria-hidden="true">角色<br>待補</div>';
+
         app.innerHTML =
           '<div class="result-card">' +
           artHtml +
@@ -1365,22 +1417,25 @@
           "</div>" +
           '<div class="panel"><div class="sec-title">我的技能包</div>' +
           skillHtml +
-          "</div>" +
-          '<div class="panel"><div class="sec-title">正在尋找</div>' +
+          '<div class="panel-split"><div class="sec-title">正在尋找</div>' +
           '<div class="seeking">想找的夥伴：會' +
           esc(state.wantSkill || "聊廣告") +
-          "</div>" +
+          "</div></div>" +
           "</div>" +
           '<div class="panel"><div class="sec-title">最合拍的類型</div>' +
+          '<div class="match-row">' +
+          matchArtHtml +
+          '<div class="match-body">' +
           '<div class="match-name">' +
-          esc(TYPES[type.match].name) +
+          esc(match.name) +
           "</div>" +
           '<p class="match-line">' +
-          esc(TYPES[type.match].tag) +
+          esc(match.tag) +
           "</p>" +
-          '<p class="match-line" style="margin-top:8px">建議搭配技能：' +
+          '<p class="match-line" style="margin-top:6px">建議搭配技能：' +
           esc(type.skills) +
           "</p>" +
+          "</div></div>" +
           "</div>" +
           '<div class="foot">' +
           '<button class="btn-ghost" data-act="retry">再測一次</button>' +
